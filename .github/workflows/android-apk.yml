@@ -1,0 +1,140 @@
+name: Android APK
+
+# Builds an installable Android APK on every push to main, every v* tag, and
+# manually. Production releases must provide the persistent signing key through
+# repository secrets; without them the workflow builds with a throwaway CI key
+# so pull requests and forks can still verify the build.
+#
+# Required secrets for a Play-ready release:
+#   ANDROID_KEYSTORE_BASE64      base64 of the .keystore file
+#   ANDROID_KEYSTORE_PASSWORD    keystore password
+#   ANDROID_KEY_ALIAS            key alias
+#   ANDROID_KEY_PASSWORD         key password
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform and build tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+
+      - name: Prepare signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          keystore="$RUNNER_TEMP/penca-release.keystore"
+
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            echo "Using the release keystore from repository secrets."
+            {
+              echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+              echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+              echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair \
+              -keystore "$keystore" \
+              -alias penca-ci \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 3650 \
+              -storepass penca-ci-only \
+              -keypass penca-ci-only \
+              -dname "CN=Penca CI, OU=Mobile, O=Penca, L=Jakarta, C=ID"
+
+            echo "::warning::No release keystore configured. The APK is signed with a throwaway CI key and cannot be upgraded over a production install."
+            echo "ANDROID_KEYSTORE_PASSWORD=penca-ci-only" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=penca-ci" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=penca-ci-only" >> "$GITHUB_ENV"
+          fi
+
+          echo "ANDROID_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
+
+      - name: Install NativePHP Android project
+        run: php artisan native:install android --no-interaction
+
+      - name: Build signed release APK
+        run: php artisan native:package android --no-tty --output=build/apk
+
+      - name: Verify APK artifact
+        run: |
+          apk="$(find build/apk -maxdepth 1 -name '*.apk' -print -quit)"
+
+          if [ -z "$apk" ]; then
+            echo "::error::No APK was produced."
+            find nativephp/android/app/build/outputs -type f || true
+            exit 1
+          fi
+
+          size="$(stat -c%s "$apk")"
+
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::APK is suspiciously small ($size bytes)."
+            exit 1
+          fi
+
+          sha256sum "$apk" | tee build/apk/SHA256SUMS.txt
+          echo "APK: $apk ($size bytes)"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: penca-android-apk-${{ github.sha }}
+          path: |
+            build/apk/*.apk
+            build/apk/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
