@@ -99,8 +99,10 @@ tests/Feature/            test layar dan alur bisnis
 
 ## Status Verifikasi
 
-- Test otomatis, Pint, dan `native:validate`: lulus di lingkungan pengembangan ini.
-- Build APK dan pemasangan pada perangkat Android fisik: **NOT VERIFIED** — lingkungan ini tidak memiliki Java/Android SDK maupun perangkat.
+- Test otomatis, Pint, dan `native:validate`: lulus di lingkungan lokal dan GitHub Actions.
+- Build APK di GitHub Actions: **VERIFIED (CI)** — run [43697729296](https://github.com/isacapocalype/Penca/actions/runs/43697729296) sukses. Artifact `app-release.apk` berukuran 79.707.787 byte dengan SHA-256 `002ec81afcb2b7d8b08dd6c54101ccf7251d7fc18baf5eeeae8eb75b351b54cc`. APK ini ditandatangani dengan keystore sementara CI.
+- Pemasangan dan pengujian pada perangkat Android fisik: **NOT VERIFIED** — belum ada akses perangkat.
+- Tanda tangan rilis produksi: **NOT VERIFIED** — repository secrets keystore belum diisi, sehingga APK CI tidak dapat menimpa instalasi produksi.
 - Restore `.db` di dalam aplikasi: **NOT VERIFIED / tidak didukung** — restore di aplikasi hanya menerima JSON.
 - Import XLSX membutuhkan ekstensi `ZipArchive` pada runtime perangkat: **NOT VERIFIED** — jalur CSV adalah jalur yang dijamin.
 - App lock biometrik opsional dari `DESIGN.md` §9.11 tidak diaktifkan: PRD §16 menetapkan perlindungan akses melalui kunci perangkat, bukan autentikasi aplikasi. Tidak ada tombol atau klaim fitur ini di dalam aplikasi.
