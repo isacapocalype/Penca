@@ -1,11 +1,10 @@
 * text=auto eol=lf
 
-*.blade.php diff=html
 *.css diff=css
 *.html diff=html
 *.md diff=markdown
-*.php diff=php
+*.ts diff=typescript
+*.tsx diff=typescript
 
-/.github/workflows/fresh-install.yml export-ignore
-CHANGELOG.md export-ignore
-.styleci.yml export-ignore
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf

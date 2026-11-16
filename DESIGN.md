@@ -2,10 +2,10 @@
 # PENCA — UI/UX Design System
 
 **Project:** Penca — Konveksi Business Dashboard  
-**Platform:** Android (NativePHP for Mobile)  
+**Platform:** Android (Capacitor 8 + React 19)  
 **Style:** Modern Warm Glass  
 **Primary Accent:** `#FFA500`  
-**Version:** 1.0  
+**Version:** 2.0  
 **Companion Documents:** `PRD.md`, `ANTISLOPAI.md`
 
 ---
@@ -206,9 +206,9 @@ backdrop-filter: blur(24px) saturate(160%);
 border-top: 1px solid rgba(255, 255, 255, 0.8);
 ```
 
-## 6.3 NativePHP Fallback
+## 6.3 Capacitor / WebView Fallback
 
-`backdrop-filter` tidak dijamin tersedia di komponen native. Wajib ada fallback:
+`backdrop-filter` didukung Chromium WebView modern, tetapi tidak dijamin pada semua perangkat Android dan mode penghematan daya. Wajib ada fallback:
 
 - Background putih semi-opaque (`rgba(255,255,255,0.86)`).
 - Gradient vertikal halus.
@@ -216,7 +216,7 @@ border-top: 1px solid rgba(255, 255, 255, 0.8);
 - Shadow hangat tipis.
 - Background mesh kuning di belakang card.
 
-Jangan memakai blur berat pada list panjang. Blur hanya untuk area kecil dan statis.
+Jangan memakai blur berat pada list panjang. Blur hanya untuk area kecil dan statis. Uji tampilan pada WebView perangkat fisik, bukan hanya browser desktop.
 
 ## 6.4 Dilarang
 
@@ -499,6 +499,8 @@ Hero card boleh memakai glass dengan aksen kuning tipis. Angka laba bersih palin
 - Auto-backup toggle.
 - Riwayat backup.
 - Restore dengan konfirmasi.
+- Backup dan restore memakai JSON Penca. Snapshot `.db` tidak dibuat oleh adapter SQLite native dan tidak boleh ditampilkan sebagai opsi yang tersedia.
+- Tampilkan peringatan bahwa file backup memuat data keuangan sensitif.
 - Peringatan data sensitif.
 
 ## 9.11 Pengaturan
@@ -577,17 +579,19 @@ Aturan:
 
 ---
 
-# 13. NATIVEPHP CONSTRAINTS
+# 13. CAPACITOR & ANDROID CONSTRAINTS
 
-- UI dirender dengan EDGE components, bukan HTML/CSS penuh.
+- UI dirender dengan React + CSS di WebView lokal Capacitor. Jangan memuat UI dari URL remote.
 - `backdrop-filter` wajib memiliki fallback.
-- Chart memakai canvas/native, bukan WebView berat.
-- File picker dan share memakai API NativePHP.
-- Jangan mengandalkan hover state.
-- Jangan mengandalkan `position: fixed` seperti di web.
-- Perhatikan safe area dan keyboard.
+- Chart boleh memakai SVG/CSS ringan; jangan memuat library chart berat tanpa alasan.
+- File picker memakai input file WebView; share memakai plugin Capacitor Filesystem/Share. Keduanya wajib diuji di perangkat.
+- Jangan mengandalkan hover state; sediakan state aktif/fokus untuk sentuhan.
+- `position: fixed` dan sticky boleh dipakai, tetapi wajib diuji dengan keyboard dan safe area.
+- Perhatikan safe area notch, status bar, navigation bar, dan keyboard.
 - Uji di perangkat fisik, bukan hanya browser.
-- Jangan memakai library UI web yang tidak didukung runtime native.
+- Jangan memakai library UI yang menarik aset atau UI dari jaringan.
+- Android `allowBackup` wajib mati; aplikasi tidak boleh meminta izin INTERNET untuk operasi normal.
+- Perilaku native yang belum diuji harus ditulis `NOT VERIFIED`, bukan diasumsikan berhasil.
 
 ---
 

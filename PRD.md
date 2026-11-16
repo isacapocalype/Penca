@@ -2,16 +2,16 @@
 # Sistem Manajemen Keuangan & Penjualan Konveksi
 
 **Nama Proyek:** Penca — Konveksi Business Dashboard  
-**Versi Dokumen:** 1.2.0  
-**Status:** Implementasi MVP — disinkronkan dengan stack final  
-**Framework:** Laravel 13, PHP 8.4+  
-**Mobile Runtime:** NativePHP for Mobile 4.x  
-**Database:** SQLite on-device  
-**UI:** Blade + NativePHP EDGE components  
+**Versi Dokumen:** 2.0.0  
+**Status:** Implementasi MVP — disinkronkan dengan stack Capacitor/React  
+**App Shell:** Capacitor 8.6 (Android)  
+**Framework UI:** React 19 + TypeScript 5.9 + Vite 8  
+**Database:** SQLite on-device via `@capacitor-community/sqlite`  
+**UI Runtime:** WebView lokal milik aplikasi (bukan situs remote)  
 **Mode Akses:** Tanpa login — tool internal single-operator  
 **Bahasa:** Indonesia  
 **Zona Waktu:** Asia/Jakarta  
-**Target Platform:** Android (native, offline-first)
+**Target Platform:** Android (offline-first)
 
 ---
 
@@ -31,7 +31,7 @@ Pencatatan manual menggunakan Excel memiliki beberapa kendala:
 - Kesulitan membuat laporan harian dan bulanan.
 - Sulit membandingkan performa Shopee dengan TikTok Shop.
 
-Oleh karena itu, dibangun aplikasi Android native untuk mengelola seluruh data toko dalam satu sistem dengan pemisahan data dan laporan per toko. Aplikasi berjalan offline di perangkat, tanpa server dan tanpa akun.
+Oleh karena itu, dibangun aplikasi Android untuk mengelola seluruh data toko dalam satu sistem dengan pemisahan data dan laporan per toko. Aplikasi berjalan offline di perangkat, tanpa server dan tanpa akun. UI React dirender di WebView lokal Capacitor, sedangkan data keuangan disimpan di SQLite native perangkat.
 
 ## 1.2 Tujuan Produk
 
@@ -523,14 +523,14 @@ Sistem menerima:
 
 ## 14.1 Konsep Desain
 
-Native mobile dashboard, bukan WebView dan bukan layout web responsif.
+Mobile dashboard dalam shell Capacitor. UI React dirender di WebView lokal aplikasi; data keuangan tetap berada di SQLite native. Layout dioptimalkan untuk layar ponsel, bukan layout desktop responsif.
 
 Karakter desain:
 
 - Minimalis.
 - Profesional.
 - Modern.
-- Native mobile: top bar, scroll view, bottom navigation.
+- Mobile: top bar, scroll view, bottom navigation.
 - Mudah digunakan satu tangan.
 - Fokus pada informasi keuangan.
 
@@ -626,6 +626,8 @@ Karena aplikasi tidak memakai login dan berjalan offline, keamanan berfokus pada
 7. Tidak ada data keuangan yang dikirim ke layanan eksternal.
 8. Jika perangkat hilang atau rusak, data hanya dapat dipulihkan dari backup.
 
+Catatan implementasi Capacitor: backup dan restore di dalam aplikasi memakai JSON Penca. Snapshot `.db` tidak dibuat oleh adapter SQLite native, sehingga file `.db` tidak boleh dianggap tersedia atau dapat dipulihkan dari aplikasi. Android `allowBackup` dimatikan agar data keuangan tidak ikut backup sistem, dan aplikasi tidak meminta izin INTERNET.
+
 ---
 
 # 17. Non-Functional Requirements
@@ -633,7 +635,7 @@ Karena aplikasi tidak memakai login dan berjalan offline, keamanan berfokus pada
 | Kategori | Persyaratan |
 |---|---|
 | Performance | Dashboard normal ditargetkan tampil dalam 3 detik pada perangkat Android menengah |
-| Platform | Android native; tidak ada layout desktop atau WebView |
+| Platform | Android via Capacitor; UI WebView lokal, data SQLite native; tidak ada layout desktop |
 | Security | Perlindungan data lokal, backup, dan audit perubahan |
 | Scalability | Mendukung penambahan banyak toko dan puluhan ribu pesanan |
 | Reliability | Transaksi keuangan tidak boleh tersimpan setengah |
@@ -667,7 +669,7 @@ Karena aplikasi tidak memakai login dan berjalan offline, keamanan berfokus pada
 
 ## Tahap Awal
 
-Sistem menggunakan input manual dan import CSV. Import XLSX didukung bila ekstensi `ZipArchive` tersedia pada runtime perangkat; CSV adalah jalur utama yang dijamin.
+Sistem menggunakan input manual dan import CSV. Import XLSX dibaca di perangkat dengan parser bawaan aplikasi; CSV adalah jalur utama yang dijamin. File XLSX ekspor marketplace nyata tetap wajib diuji di perangkat sebelum dianggap terverifikasi.
 
 ## Pengembangan Berikutnya
 
@@ -719,8 +721,8 @@ Fitur dianggap selesai jika memenuhi kriteria berikut.
 
 ## Phase 1 — Foundation
 
-- Setup Laravel 13.
-- Setup SQLite on-device dan NativePHP for Mobile.
+- Setup Capacitor 8 + React 19 + TypeScript + Vite.
+- Setup SQLite on-device via `@capacitor-community/sqlite`.
 - Manajemen toko.
 - Struktur database.
 
@@ -785,10 +787,31 @@ Proyek dinyatakan mencapai MVP apabila:
 - Kunci periode menolak perubahan data final.
 - Audit log mencatat perubahan data keuangan.
 - Build APK release dihasilkan melalui GitHub Actions.
+- Pemasangan dan pengujian pada perangkat Android fisik didokumentasikan dengan bukti; sebelum itu statusnya tetap `NOT VERIFIED`.
 
 ---
 
-# 23. Kesimpulan
+# 23. Status Verifikasi Implementasi
+
+Status per 16 November 2026:
+
+| Area | Status | Bukti / catatan |
+|---|---|---|
+| Test otomatis | VERIFIED (lokal) | `npm run test` — 8 file, 35 test lulus |
+| Typecheck | VERIFIED (lokal) | `npm run typecheck` lulus |
+| Build web | VERIFIED (lokal) | `npm run build` menghasilkan `dist/` |
+| Build APK Capacitor | NOT VERIFIED | Workflow ada; belum ada run Capacitor yang selesai |
+| Instalasi di perangkat | NOT VERIFIED | Belum ada akses perangkat Android |
+| SQLite native | NOT VERIFIED di perangkat | Test otomatis memakai sql.js |
+| File picker / share | NOT VERIFIED di perangkat | Bergantung WebView dan plugin Capacitor |
+| Signing produksi | NOT VERIFIED | Secrets keystore belum diisi |
+| Restore `.db` | TIDAK DIDUKUNG | Restore aplikasi hanya menerima JSON Penca |
+
+Implementasi NativePHP sebelumnya diarsipkan pada tag `nativephp-final` (commit `4c2bfa9`). Dokumen ini tidak boleh dipakai untuk mengklaim pengujian perangkat yang belum dilakukan.
+
+---
+
+# 24. Kesimpulan
 
 Konveksi Business Dashboard merupakan sistem manajemen keuangan multi-toko yang dirancang untuk membantu pemilik usaha konveksi mengelola bisnis marketplace secara lebih terstruktur.
 
@@ -807,6 +830,6 @@ Fokus utama produk adalah memberikan informasi yang akurat mengenai:
 ---
 
 **Dokumen:** PRD Penca — Konveksi Business Dashboard  
-**Versi:** 1.2.0  
+**Versi:** 2.0.0  
 **Status:** Implementasi MVP — disinkronkan dengan stack final  
-**Stack:** Laravel 13 + PHP 8.4 + NativePHP for Mobile 4.x + SQLite on-device
+**Stack:** Capacitor 8.6 + React 19 + TypeScript 5.9 + Vite 8 + SQLite on-device

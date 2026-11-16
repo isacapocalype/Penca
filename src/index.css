@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/Inter-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/Inter-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("./assets/fonts/PlusJakartaSans-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("./assets/fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #faf9f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f3ef;
+  --color-surface-raised: #fffdf9;
+
+  --color-primary: #ffa500;
+  --color-primary-strong: #e68f00;
+  --color-primary-soft: #fff4de;
+  --color-primary-text: #8a5300;
+
+  --color-on-surface: #1c1917;
+  --color-secondary: #78716c;
+  --color-muted: #a8a29e;
+  --color-outline: #e7e5e4;
+  --color-outline-strong: #d6d3d1;
+
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-info: #0369a1;
+  --color-info-soft: #e0f2fe;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+
+  --shadow-soft: 0 1px 2px rgb(28 25 23 / 0.04), 0 8px 28px -18px rgb(28 25 23 / 0.18);
+  --shadow-float: 0 18px 50px -24px rgb(28 25 23 / 0.3);
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background-color: var(--color-background);
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input[type="date"] {
+    min-height: 2.75rem;
+  }
+
+  ::selection {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-text);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background-color: rgb(255 255 255 / 0.82);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .card {
+    border-radius: 1.5rem;
+    border: 1px solid color-mix(in oklab, var(--color-outline) 78%, transparent);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .input-base {
+    width: 100%;
+    border-radius: 0.9rem;
+    border: 1px solid var(--color-outline-strong);
+    background-color: var(--color-surface);
+    padding: 0.7rem 0.9rem;
+    font-size: 0.925rem;
+    color: var(--color-on-surface);
+    outline: none;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .input-base::placeholder {
+    color: var(--color-muted);
+  }
+
+  .input-base:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgb(255 165 0 / 0.16);
+  }
+
+  .input-base:disabled {
+    background-color: var(--color-surface-muted);
+    color: var(--color-secondary);
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .top-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .nav-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 220ms ease-out both;
+}
+
+.animate-toast-in {
+  animation: toast-in 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-toast-in {
+    animation: none;
+  }
+}

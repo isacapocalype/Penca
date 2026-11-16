@@ -1,6 +1,6 @@
 # Penca
 
-Dashboard keuangan dan penjualan konveksi untuk Shopee dan TikTok Shop. Aplikasi berjalan sepenuhnya offline di Android: tidak ada akun, server, API, atau data yang dikirim keluar perangkat.
+Dashboard keuangan dan penjualan konveksi untuk Shopee dan TikTok Shop. Penca berjalan sepenuhnya offline di Android: tidak ada akun, server, API, atau pengiriman data ke luar perangkat.
 
 Dokumen acuan:
 
@@ -10,12 +10,16 @@ Dokumen acuan:
 
 ## Stack
 
-- Laravel 13, PHP 8.4+
-- NativePHP for Mobile 4.x dengan layar NativeComponent + EDGE
-- SQLite on-device
-- Android first, tanpa WebView dan tanpa Livewire
-- Pengujian Pest, format Laravel Pint
-- Build APK melalui GitHub Actions
+- Capacitor 8.6 (Android) sebagai shell aplikasi.
+- React 19 + TypeScript 5.9 + Vite 8.
+- Tailwind CSS 4 untuk UI; UI dirender di WebView lokal milik aplikasi, bukan situs remote.
+- SQLite on-device melalui `@capacitor-community/sqlite` 8.1.
+- `sql.js` hanya untuk Vitest dan fallback browser saat pengembangan.
+- HashRouter, React Query, lucide-react.
+- XLSX ditulis/dibaca dengan `fflate`; PDF memakai implementasi PDF minimal bawaan proyek.
+- Pengujian Vitest + Testing Library.
+
+Tidak ada framework PHP, server aplikasi, login, atau database jaringan.
 
 ## Fitur
 
@@ -24,43 +28,60 @@ Dokumen acuan:
 - HPP per produk dengan riwayat berlaku tanpa periode tumpang tindih dan snapshot HPP pada setiap item pesanan.
 - Fee marketplace, diskon penjual dan marketplace terpisah, refund aktual, pencairan, iklan, dan biaya operasional.
 - Pajak PPN/PPh Final terpisah dari laba, profil pajak per toko, dan entri manual.
-- Laporan harian, mingguan, bulanan dengan ekspor CSV, XLSX, PDF nyata dan dialog berbagi.
-- Backup JSON lengkap, snapshot `.db`, retensi, restore JSON dengan backup pengaman, serta audit log.
+- Laporan harian, mingguan, bulanan dengan ekspor CSV, XLSX, PDF, dan dialog berbagi.
+- Backup JSON lengkap, retensi, restore JSON dengan backup pengaman dan validasi checksum, serta audit log.
 - Kunci periode untuk menolak perubahan data bulan yang sudah final.
 
 ## Menjalankan Lokal
 
-```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-touch database/database.sqlite
-php artisan migrate
-php artisan test
-```
-
-Perintah pengembangan NativePHP:
+Prasyarat: Node.js 22+ dan npm.
 
 ```bash
-php artisan native:install android
-php artisan native:run android
-php artisan native:watch android
-php artisan native:validate
+npm ci
+npm run dev
 ```
 
-## Pengujian
+Di browser, aplikasi memakai adapter `sql.js` dan menyimpan byte database ke IndexedDB. Mode ini berguna untuk pengembangan dan pengujian, bukan bukti bahwa SQLite native sudah berjalan di perangkat.
+
+Perintah lain:
 
 ```bash
-php artisan test --compact
-vendor/bin/pint --test
-php artisan native:validate
+npm run typecheck
+npm run test
+npm run test:watch
+npm run build
+npm run cap:sync
 ```
 
-Test berjalan terhadap SQLite in-memory melalui `RefreshDatabase`. Test alur mencakup pembuatan pesanan, HPP, import idempotent, pajak, kunci periode, backup/restore, dan penolakan backup yang dimodifikasi.
+## Android
 
-## Build APK
+Prasyarat build Android: Java 21, Android SDK platform 36, dan build-tools 36.0.0.
 
-Workflow `.github/workflows/android-apk.yml` membangun APK release dan mengunggahnya sebagai artifact. Untuk rilis produksi, isi repository secrets berikut:
+```bash
+npm run build
+npx cap sync android
+npm run android:open
+```
+
+Build APK release dari terminal:
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
+APK berada di `android/app/build/outputs/apk/release/`. Build release hanya ditandatangani jika variabel berikut diisi saat Gradle dijalankan:
+
+```text
+PENCA_KEYSTORE_FILE
+PENCA_KEYSTORE_PASSWORD
+PENCA_KEY_ALIAS
+PENCA_KEY_PASSWORD
+```
+
+Tanpa variabel tersebut, Gradle menghasilkan APK release yang tidak ditandatangani. Untuk uji lokal tanpa signing, gunakan `./gradlew assembleDebug`.
+
+Workflow `.github/workflows/android-apk.yml` membangun APK pada push ke `main`, tag `v*`, pull request, dan manual. Untuk rilis produksi, isi repository secrets:
 
 | Secret | Isi |
 |---|---|
@@ -71,38 +92,57 @@ Workflow `.github/workflows/android-apk.yml` membangun APK release dan mengungga
 
 Tanpa secrets tersebut, workflow tetap membangun APK dengan keystore sementara khusus CI. APK itu dapat dipasang untuk pengujian, tetapi tidak dapat menimpa instalasi produksi dan tidak boleh diunggah ke Play Store.
 
-Perintah build lokal:
+## Pengujian
 
 ```bash
-php artisan native:package android --no-tty
+npm run test
+npm run typecheck
+npm run build
 ```
+
+Test berjalan dengan database sql.js terisolasi per test dan lapisan file in-memory. Cakupan saat ini mencakup perhitungan uang, pesanan/refund/HPP, smoke test database, ringkasan keuangan, pajak, import CSV/XLSX, backup/restore, dan ekspor laporan.
 
 ## Keamanan Data
 
 - Database berada di perangkat. Uninstall aplikasi menghapus database.
-- Backup JSON adalah jalur restore di dalam aplikasi. File `.db` adalah snapshot darurat dan tidak dipulihkan saat aplikasi berjalan.
-- File backup memuat data keuangan. Simpan hanya di tempat pribadi dan jangan dibagikan sembarangan.
+- Backup JSON adalah jalur restore di dalam aplikasi. Snapshot `.db` tidak dibuat oleh adapter SQLite native, jadi file `.db` tidak boleh dianggap tersedia atau dapat dipulihkan dari aplikasi.
+- File backup memuat seluruh data keuangan. Simpan hanya di tempat pribadi dan jangan dibagikan sembarangan.
 - Semua nominal disimpan sebagai integer rupiah, persentase sebagai basis poin, dan ID sebagai UUIDv7.
 - Setiap perubahan data keuangan tercatat di audit log. Periode terkunci menolak perubahan.
+- Android `allowBackup` dimatikan dan aplikasi tidak meminta izin INTERNET.
 
 ## Struktur Utama
 
 ```text
-app/NativeComponents/     layar NativeComponent
-app/Native/Concerns/      trait bersama layar
-app/Services/             kalkulasi, import, backup, ekspor
-app/Support/              uang, periode, opsi, format
-resources/views/native/   tampilan EDGE
-routes/mobile.php         rute native
-tests/Feature/            test layar dan alur bisnis
+src/
+├── components/          komponen UI dan layout
+├── hooks/               query React Query
+├── lib/
+│   ├── db/              adapter SQLite native, sql.js, skema, migrasi
+│   ├── export/          penulis XLSX dan PDF
+│   ├── files.ts         Filesystem native / IndexedDB browser
+│   ├── financial.ts     rumus laba dan pajak
+│   └── money.ts         parsing dan format rupiah
+├── pages/               layar aplikasi
+├── services/            pesanan, pajak, import, backup, laporan
+└── test/                setup dan fixture
+
+android/                 proyek Capacitor Android
+.github/workflows/       test web dan build APK
 ```
 
 ## Status Verifikasi
 
-- Test otomatis, Pint, dan `native:validate`: lulus di lingkungan lokal dan GitHub Actions.
-- Build APK di GitHub Actions: **VERIFIED (CI)** — run [43697729296](https://github.com/isacapocalype/Penca/actions/runs/43697729296) sukses. Artifact `app-release.apk` berukuran 79.707.787 byte dengan SHA-256 `002ec81afcb2b7d8b08dd6c54101ccf7251d7fc18baf5eeeae8eb75b351b54cc`. APK ini ditandatangani dengan keystore sementara CI.
+Status per 16 November 2026:
+
+- `npm run test`: **VERIFIED (lokal)** — 8 file, 35 test lulus.
+- `npm run typecheck` dan `npm run build`: **VERIFIED (lokal)**.
+- Build APK Capacitor di GitHub Actions: **NOT VERIFIED** — workflow sudah ditulis, tetapi belum ada run Capacitor yang selesai saat README ini diperbarui.
 - Pemasangan dan pengujian pada perangkat Android fisik: **NOT VERIFIED** — belum ada akses perangkat.
-- Tanda tangan rilis produksi: **NOT VERIFIED** — repository secrets keystore belum diisi, sehingga APK CI tidak dapat menimpa instalasi produksi.
-- Restore `.db` di dalam aplikasi: **NOT VERIFIED / tidak didukung** — restore di aplikasi hanya menerima JSON.
-- Import XLSX membutuhkan ekstensi `ZipArchive` pada runtime perangkat: **NOT VERIFIED** — jalur CSV adalah jalur yang dijamin.
-- App lock biometrik opsional dari `DESIGN.md` §9.11 tidak diaktifkan: PRD §16 menetapkan perlindungan akses melalui kunci perangkat, bukan autentikasi aplikasi. Tidak ada tombol atau klaim fitur ini di dalam aplikasi.
+- SQLite native (`@capacitor-community/sqlite`): **NOT VERIFIED di perangkat** — kode adapter ada, pengujian otomatis memakai sql.js.
+- File picker, Filesystem native, dan share sheet: **NOT VERIFIED di perangkat**.
+- Tanda tangan rilis produksi: **NOT VERIFIED** — repository secrets keystore belum diisi.
+- Restore `.db` di dalam aplikasi: **NOT DIDUKUNG** — restore hanya menerima JSON Penca.
+- Import XLSX dari file marketplace nyata di perangkat: **NOT VERIFIED** — pembaca XLSX diuji dengan workbook yang dihasilkan aplikasi sendiri; CSV adalah jalur yang dijamin.
+
+Implementasi NativePHP sebelumnya diarsipkan di git history dan tag `nativephp-final` pada commit `4c2bfa9`. Jangan mengklaim build, instalasi, atau perilaku native Capacitor sudah teruji tanpa artifact dan pengujian perangkat yang nyata.

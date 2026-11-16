@@ -1,34 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+coverage/
+.vite/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+
+# Logs and editor files
 *.log
 .DS_Store
-.env
-.env.backup
-.env.production
-.claude/settings.local.json
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
-Homestead.json
-Homestead.yaml
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.fleet/
+.zed/
 
-# NativePHP generated projects, build output, and signing credentials
-/nativephp
-/build
-/credentials
+# Capacitor / Android generated output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+*.apk
+*.aab
+*.jks
+*.keystore
 
-# Vibe service (deployed separately from R2)
-vibe-service/
-public/vibe/
+# Local data and backups — never commit financial data
+*.sqlite
+*.sqlite3
+*.db
+backups/

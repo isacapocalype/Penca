@@ -2,8 +2,8 @@
 # PENCA — Anti AI Slop & Engineering Quality Rules
 
 **Project:** Penca — Konveksi Business Dashboard  
-**Platform:** Android (NativePHP for Mobile)  
-**Version:** 1.0  
+**Platform:** Android (Capacitor 8 + React 19)  
+**Version:** 2.0  
 **Document Type:** Engineering Quality Standard  
 **Applies To:** All AI Coding Agents and Developers  
 **Companion Documents:** `PRD.md` (product), `DESIGN.md` (UI)
@@ -75,21 +75,19 @@ Jika database kosong, tampilkan **empty state** yang benar — bukan angka palsu
 
 DILARANG meninggalkan kode seperti:
 
-```php
+```ts
 // TODO: implement later
 ```
 
-```php
-public function saveOrder(): void
-{
-    // Coming soon
+```ts
+export function saveOrder(): void {
+  // Coming soon
 }
 ```
 
-```php
-public function handlePayment(): void
-{
-    alert('Pembayaran berhasil');
+```ts
+export function handlePayment(): void {
+  alert('Pembayaran berhasil');
 }
 ```
 
@@ -133,10 +131,10 @@ Stack sudah ditentukan. AI tidak boleh mengganti stack karena lebih mudah atau l
 
 | Layer | Wajib | Dilarang |
 |---|---|---|
-| Framework | Laravel 13, PHP 8.4 | Framework PHP lain |
-| Mobile runtime | NativePHP for Mobile 4.x | WebView wrapper generik |
-| UI | Blade + NativePHP EDGE components | Livewire, React, Vue, Flutter |
-| Database | SQLite on-device | MySQL, PostgreSQL, Supabase, API database |
+| App shell | Capacitor 8.6 Android | Wrapper yang memuat situs remote |
+| UI | React 19 + TypeScript + Vite + Tailwind CSS | Livewire, Blade, Flutter, native Android UI |
+| Database | SQLite on-device via `@capacitor-community/sqlite` | MySQL, PostgreSQL, Supabase, API database |
+| Database pengujian/browser | `sql.js` terisolasi | Mengklaim sql.js sebagai bukti SQLite native |
 | Build | GitHub Actions → APK | Build manual sebagai satu-satunya jalur |
 | Platform | Android first | iOS sebelum Android stabil |
 | Auth | Tanpa login | User account, PIN, role, OAuth |
@@ -145,11 +143,12 @@ Stack sudah ditentukan. AI tidak boleh mengganti stack karena lebih mudah atau l
 Ketentuan tambahan:
 
 - Jangan menambahkan dependency baru tanpa alasan teknis dan persetujuan.
-- Jangan memasang library untuk fungsi sederhana yang bisa ditangani Laravel/PHP.
+- Jangan memasang library untuk fungsi sederhana yang bisa ditangani React/TypeScript.
 - Jangan membangun backend API jika aplikasi memang offline-first.
 - Jangan mengubah arsitektur hanya karena AI lebih nyaman dengan pola lain.
+- Jangan memuat UI, font, atau data dari URL jaringan saat aplikasi berjalan.
 
-Jika `PRD.md` masih menyebut MySQL, Livewire, atau server, PRD tersebut belum sinkron dengan stack final dan wajib direvisi sebelum coding.
+Jika `PRD.md` masih menyebut MySQL, Livewire, PHP, atau server aplikasi, PRD tersebut belum sinkron dengan stack final dan wajib direvisi sebelum coding.
 
 ---
 
@@ -178,13 +177,13 @@ Setiap fitur yang menyimpan data wajib diuji:
 
 ## 4.3 Migrasi
 
-- Migrasi berjalan saat aplikasi start sesuai mekanisme NativePHP.
+- Migrasi berjalan saat aplikasi start melalui `migrate()` di `src/lib/db/index.ts`.
 - Migrasi wajib diuji pada dua kondisi:
   - Instalasi baru.
   - Upgrade dari versi aplikasi sebelumnya.
-- Jangan mengedit migrasi yang sudah pernah dirilis. Buat migrasi baru.
+- Jangan mengedit migrasi yang sudah pernah dirilis. Buat migrasi baru dengan versi baru.
 - Perubahan destruktif wajib memiliki backup dan rencana rollback.
-- Seed data menggunakan migrasi khusus, bukan seeder yang berjalan berulang.
+- Seed data menggunakan `INSERT OR IGNORE` yang idempoten, bukan data yang berulang setiap start.
 
 ## 4.4 Tipe Data SQLite
 
@@ -209,10 +208,10 @@ Wajib menggunakan:
 - Index pada kolom pencarian dan foreign key.
 - Timestamps.
 
-Aktifkan foreign key SQLite di konfigurasi Laravel:
+Aktifkan foreign key SQLite di setiap koneksi database:
 
-```php
-'foreign_key_constraints' => true,
+```ts
+await db.execute('PRAGMA foreign_keys = ON;');
 ```
 
 Dilarang mengandalkan validasi UI untuk menjaga integritas database.
@@ -234,7 +233,7 @@ Bagian ini adalah bagian paling kritis. AI tidak boleh mengarang rumus atau meng
 
 - Uang disimpan sebagai `INTEGER` rupiah.
 - Dilarang menggunakan `FLOAT` atau `DOUBLE` untuk uang.
-- Dilarang melakukan operasi uang di JavaScript/Blade dengan floating-point.
+- Semua operasi uang di TypeScript wajib memakai integer dan helper di `src/lib/money.ts` / `src/lib/financial.ts`. Dilarang membagi atau mengalikan uang dengan floating-point di komponen UI.
 - Pembulatan dilakukan half-up ke rupiah penuh per transaksi.
 - Persentase disimpan sebagai basis poin.
 
@@ -271,20 +270,26 @@ Semua operasi yang mengubah lebih dari satu tabel wajib menggunakan transaksi da
 
 Contoh:
 
-```php
-DB::transaction(function () use ($order, $items, $fees) {
-    $order->items()->createMany($items);
-    $order->fees()->createMany($fees);
-    $order->refresh()->recalculateTotals();
+```ts
+await db.transaction(async () => {
+  for (const item of items) {
+    await db.run('INSERT INTO order_items (...) VALUES (...)', itemValues(item));
+  }
+
+  for (const fee of fees) {
+    await db.run('INSERT INTO marketplace_fees (...) VALUES (...)', feeValues(fee));
+  }
+
+  await recalculateOrderTotals(db, order.id);
 });
 ```
 
 DILARANG:
 
-```php
-$order->items()->createMany($items);
-$order->fees()->createMany($fees);
-$order->update(['total' => $total]);
+```ts
+for (const item of items) {
+  await db.run('INSERT INTO order_items (...) VALUES (...)', itemValues(item));
+}
 ```
 
 tanpa transaksi, karena kegagalan di tengah proses dapat meninggalkan data setengah jadi.
@@ -293,24 +298,23 @@ tanpa transaksi, karena kegagalan di tengah proses dapat meninggalkan data seten
 
 DILARANG:
 
-```php
-$total = $order->items->sum(fn ($item) => $item->qty * $item->price);
-$order->update(['total' => $total]);
-return response()->json(['success' => true]);
+```ts
+const total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+await db.run('UPDATE orders SET gross_revenue = ? WHERE id = ?', [total, order.id]);
+showToast('Pesanan berhasil disimpan');
 ```
 
 WAJIB:
 
-```php
-DB::transaction(function () use ($order) {
-    $order->refresh()->recalculateTotals();
-    $order->save();
+```ts
+await db.transaction(async () => {
+  await recalculateOrderTotals(db, order.id);
+  await recordAudit(db, auditEntry);
 });
-
-return response()->json(['success' => true]);
+showToast('Pesanan berhasil disimpan');
 ```
 
-Sukses hanya dikembalikan setelah transaksi commit.
+Sukses hanya ditampilkan setelah transaksi commit. Jika transaksi gagal, tampilkan error dan jangan menampilkan pesan sukses.
 
 ---
 
@@ -367,7 +371,7 @@ Dokumen ini bukan pengganti konsultasi pajak. Perhitungan adalah alat bantu dan 
 
 ---
 
-# 7. NATIVEPHP & ANDROID RULES
+# 7. CAPACITOR & ANDROID RULES
 
 ## 7.1 Wajib Diuji di Perangkat
 
@@ -375,33 +379,36 @@ Dokumen ini bukan pengganti konsultasi pajak. Perhitungan adalah alat bantu dan 
 - Wajib diuji di HP Android fisik.
 - Wajib diuji dalam mode pesawat.
 - Wajib diuji setelah aplikasi ditutup paksa dan dibuka kembali.
+- Wajib membuktikan database ditulis oleh adapter SQLite native, bukan sql.js.
+- Wajib menguji file picker, share sheet, dan restore JSON di perangkat.
 
 ## 7.2 Perilaku Mobile
 
 Wajib menangani:
 
-- Tombol back Android.
+- Tombol back Android melalui riwayat React Router/HashRouter.
 - Safe area (notch, status bar, navigation bar).
 - Keyboard yang menutupi input.
-- File picker.
-- Share sheet.
+- File picker untuk import dan restore.
+- Share sheet untuk backup dan laporan.
 - App lifecycle: pause/resume.
-- Permission storage bila diperlukan.
+- Izin storage hanya bila plugin benar-benar membutuhkannya.
 
 ## 7.3 Larangan Web-Only
 
 Dilarang mengandalkan:
 
-- `window.location` untuk navigasi native.
-- `localStorage` sebagai database.
+- `window.location` untuk navigasi; gunakan React Router.
+- `localStorage` atau `sessionStorage` sebagai database.
 - `fetch` ke API yang tidak ada.
 - `backdrop-filter` tanpa fallback.
-- Library UI web yang tidak dirender oleh NativePHP.
+- Library UI yang memuat aset dari jaringan.
 - `alert()` sebagai dialog utama.
+- Menganggap sql.js di browser sebagai bukti SQLite native.
 
 ## 7.4 Glass Fallback
 
-NativePHP tidak dijamin mendukung `backdrop-filter`. Setiap komponen glass wajib memiliki fallback:
+`backdrop-filter` tidak dijamin pada semua WebView Android. Setiap komponen glass wajib memiliki fallback:
 
 - Background putih semi-opaque.
 - Gradient halus.
@@ -412,23 +419,32 @@ Jangan memakai blur berat pada list panjang.
 
 ## 7.5 Chart & Data Visualization
 
-- Gunakan canvas/native component yang didukung.
-- Jangan membungkus chart dalam WebView berat.
+- Gunakan SVG/CSS ringan atau library chart yang tidak memuat aset jaringan.
+- Jangan memuat chart dari iframe atau URL eksternal.
 - Jangan menampilkan chart dengan data statis.
 - Chart kosong harus menampilkan empty state.
 
 ## 7.6 Build & Release
 
 - Build release melalui GitHub Actions.
-- Command build non-interaktif:
+- Command build web dan sinkronisasi:
 
 ```bash
-php artisan native:package android --no-tty
+npm ci
+npm run build
+npx cap sync android
 ```
 
-- Artifact: `nativephp/android/app/build/outputs/apk/release/app-release.apk`.
-- Keystore dan password hanya di GitHub Secrets.
-- Dilarang commit keystore, `.env`, atau file database ke repository.
+- Command build APK non-interaktif:
+
+```bash
+cd android
+./gradlew assembleRelease --no-daemon
+```
+
+- Artifact: `android/app/build/outputs/apk/release/app-release.apk`.
+- Keystore dan password hanya di GitHub Secrets, diteruskan sebagai `PENCA_KEYSTORE_*`.
+- Dilarang commit keystore, `.env`, database, atau file backup ke repository.
 - Setiap build release wajib diuji instal pada perangkat bersih.
 
 ## 7.7 Performa & Ukuran
@@ -524,24 +540,20 @@ Dilarang menggunakan ikon acak hanya agar terlihat ramai.
 ## 9.1 Struktur yang Disarankan
 
 ```text
-app/
-├── Actions/          # operasi bisnis yang spesifik
-├── Models/           # Eloquent model
-├── Services/         # kalkulasi, import, backup
-├── Support/          # helper domain
-└── Providers/
+src/
+├── components/       # komponen UI dan layout
+├── hooks/            # query dan state turunan
+├── lib/
+│   ├── db/           # adapter, skema, migrasi, helper query
+│   ├── export/       # XLSX dan PDF
+│   ├── financial.ts  # rumus laba dan pajak
+│   ├── money.ts      # parsing dan format rupiah
+│   └── files.ts      # penyimpanan file native/browser
+├── pages/            # layar aplikasi
+├── services/         # aturan bisnis per domain
+└── test/             # setup dan fixture
 
-database/
-├── migrations/
-└── seeders/
-
-resources/views/
-├── components/       # Blade/EDGE components
-└── screens/          # layar aplikasi
-
-tests/
-├── Feature/
-└── Unit/
+android/              # proyek Capacitor Android
 ```
 
 ## 9.2 Pemisahan Tanggung Jawab
@@ -572,19 +584,17 @@ Gunakan nama yang menjelaskan tujuan.
 
 Buruk:
 
-```php
-function calc($a, $b)
-{
-    return $a - $b;
+```ts
+function calc(a: number, b: number) {
+  return a - b;
 }
 ```
 
 Baik:
 
-```php
-function calculateNetRevenue(int $gross, int $discount, int $refund): int
-{
-    return $gross - $discount - $refund;
+```ts
+function calculateNetRevenue(gross: number, discount: number, refund: number): number {
+  return gross - discount - refund;
 }
 ```
 
@@ -592,7 +602,7 @@ function calculateNetRevenue(int $gross, int $discount, int $refund): int
 
 - Gunakan stack yang sudah ditentukan.
 - Setiap dependency baru harus memiliki alasan teknis.
-- Jangan menambah library untuk hal yang bisa diselesaikan dengan fitur Laravel/PHP.
+- Jangan menambah library untuk hal yang bisa diselesaikan dengan React/TypeScript.
 - Jangan menambah package yang tidak diuji di Android.
 
 ---
@@ -603,25 +613,23 @@ Jangan menyembunyikan error.
 
 Buruk:
 
-```php
+```ts
 try {
-    $order->save();
-} catch (Throwable $e) {
-    // diam
+  await saveOrder(db, input);
+} catch {
+  // diam
 }
 ```
 
 Baik:
 
-```php
+```ts
 try {
-    DB::transaction(fn () => $order->save());
-
-    return back()->with('success', 'Pesanan berhasil disimpan.');
-} catch (Throwable $e) {
-    report($e);
-
-    return back()->with('error', 'Pesanan gagal disimpan. Silakan coba lagi.');
+  await db.transaction(() => saveOrder(db, input));
+  showToast('Pesanan berhasil disimpan.');
+} catch (error) {
+  console.error('Gagal menyimpan pesanan', error);
+  setError(errorMessage(error, 'Pesanan gagal disimpan. Silakan coba lagi.'));
 }
 ```
 
@@ -654,7 +662,7 @@ Validasi minimum:
 - File import memiliki kolom wajib.
 - Baris import yang gagal tidak menghentikan seluruh proses tanpa laporan.
 
-Gunakan Form Request atau validasi terpusat. Jangan menyebar aturan validasi di banyak tempat.
+Gunakan validasi terpusat di service domain dan constraint database. Jangan menyebar aturan validasi di banyak tempat atau mengandalkan validasi form saja.
 
 ---
 
@@ -663,7 +671,7 @@ Gunakan Form Request atau validasi terpusat. Jangan menyebar aturan validasi di 
 ## 12.1 Import
 
 - Format utama: CSV.
-- XLSX hanya jika performa di perangkat aman.
+- XLSX didukung dengan pembaca bawaan berbasis `fflate`. File XLSX marketplace nyata wajib diuji di perangkat sebelum dianggap terverifikasi.
 - Wajib ada pemetaan kolom.
 - Wajib ada preview sebelum commit.
 - Wajib ada laporan baris gagal.
@@ -684,12 +692,15 @@ Backup adalah fitur inti, bukan opsional.
 
 Wajib mendukung:
 
-- Export database `.db`.
-- Export data `.json`.
-- Restore dengan validasi versi skema.
+- Export data `.json` sebagai jalur backup dan restore utama.
+- Restore dengan validasi versi skema dan checksum.
 - Auto-backup lokal.
 - Retensi N backup.
 - Riwayat backup.
+
+Tidak didukung:
+
+- Export atau restore snapshot `.db` dari dalam aplikasi. Adapter SQLite native tidak mengekspos file database, jadi jangan menampilkan opsi `.db` atau mengklaim fitur itu ada.
 
 Wajib diuji:
 
@@ -697,6 +708,7 @@ Wajib diuji:
 - Restore di instalasi bersih.
 - Data dan relasi tetap utuh.
 - Aplikasi tidak crash setelah restore.
+- Backup yang dimodifikasi ditolak karena checksum tidak cocok.
 
 Peringatan wajib ditampilkan:
 
@@ -714,6 +726,8 @@ Peringatan wajib ditampilkan:
 - Jangan mengirim data ke layanan eksternal tanpa izin.
 - Repositori sebaiknya private.
 - Backup file harus diperlakukan sebagai data sensitif.
+- Android `allowBackup` wajib `false`; aplikasi tidak boleh meminta izin INTERNET untuk operasi normal.
+- Jangan memuat UI, font, atau aset dari URL jaringan.
 
 ---
 
@@ -721,7 +735,7 @@ Peringatan wajib ditampilkan:
 
 ## 14.1 Automated Tests
 
-Wajib ada feature/unit test untuk:
+Wajib ada unit/service test untuk:
 
 - Perhitungan omzet.
 - Diskon penjual vs marketplace.
@@ -740,11 +754,13 @@ Wajib ada feature/unit test untuk:
 
 - Install APK dari GitHub Actions.
 - Buka tanpa internet.
+- Pastikan database ditulis oleh SQLite native, bukan sql.js.
 - Simpan data, tutup paksa, buka lagi.
 - Restart HP, buka aplikasi.
-- Import CSV.
+- Import CSV dan file XLSX marketplace nyata.
 - Export PDF/Excel dan share.
-- Backup, uninstall, install ulang, restore.
+- Backup JSON, uninstall, install ulang, restore JSON.
+- Pastikan tidak ada opsi snapshot `.db` yang ditampilkan.
 - Uji keyboard pada form nominal.
 - Uji tombol back Android.
 - Uji layar kecil dan layar besar.
@@ -834,8 +850,9 @@ Sebuah fitur hanya boleh dianggap selesai jika:
 ## Offline & Data Safety
 
 - [ ] Tidak butuh internet.
-- [ ] Backup tersedia.
-- [ ] Restore diuji.
+- [ ] Backup JSON tersedia.
+- [ ] Restore JSON diuji.
+- [ ] Snapshot `.db` tidak ditampilkan sebagai fitur yang tersedia.
 - [ ] Migrasi upgrade diuji.
 
 ## Documentation
