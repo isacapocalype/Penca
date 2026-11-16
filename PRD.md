@@ -800,7 +800,7 @@ Status per 16 November 2026:
 | Test otomatis | VERIFIED (lokal + CI) | `npm run test` — 8 file, 35 test lulus; Actions run `43812239999` sukses |
 | Typecheck | VERIFIED (lokal + CI) | `npm run typecheck` lulus di lokal dan Actions |
 | Build web | VERIFIED (lokal + CI) | `npm run build` menghasilkan `dist/` di lokal dan Actions |
-| Build APK Capacitor | VERIFIED (CI) | Actions run `43812239997` sukses; artifact `penca-android-apk-275de4a39c69333a1ac27c0df48cb761df7066c9`, `app-release.apk` 13.055.456 byte, SHA-256 `980d3b9a90d95a867a23099f16419e4a4ac608ba18773b29cbe59b229173203b` |
+| Build APK Capacitor | VERIFIED (CI, commit `3f3a54d`) | Actions run `43812904321` sukses; artifact `penca-android-apk-3f3a54dfb6964243093056d98afbe52b9154ac35`, `app-release.apk` 13.055.456 byte, SHA-256 `dfed5061791ed2e7e521a0220616640b1e882024d59a0cad7256816323e283d3`; `Verify offline manifest` lulus tanpa `android.permission.INTERNET` |
 | Signature APK CI | VERIFIED (CI, kunci sementara) | `apksigner` memverifikasi `CN=Penca CI, OU=Mobile, O=Penca, L=Jakarta, C=ID` |
 | Instalasi di perangkat | NOT VERIFIED | Belum ada akses perangkat Android |
 | SQLite native | NOT VERIFIED di perangkat | Plugin terdaftar di APK; test otomatis memakai sql.js |

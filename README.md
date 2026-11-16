@@ -137,7 +137,8 @@ Status per 16 November 2026:
 
 - `npm run test`: **VERIFIED (lokal + CI)** — 8 file, 35 test lulus; workflow Tests run `43812239999` sukses.
 - `npm run typecheck` dan `npm run build`: **VERIFIED (lokal + CI)**.
-- Build APK Capacitor di GitHub Actions: **VERIFIED (CI)** — workflow Android APK run `43812239997` sukses dalam 2m31s. Artifact `penca-android-apk-275de4a39c69333a1ac27c0df48cb761df7066c9` berisi `app-release.apk` berukuran 13.055.456 byte dengan SHA-256 `980d3b9a90d95a867a23099f16419e4a4ac608ba18773b29cbe59b229173203b`; `apksigner` memverifikasi signature APK.
+- Build APK Capacitor di GitHub Actions: **VERIFIED (CI, commit `3f3a54d`)** — workflow Android APK run `43812904321` sukses dalam 2m29s. Artifact `penca-android-apk-3f3a54dfb6964243093056d98afbe52b9154ac35` berisi `app-release.apk` berukuran 13.055.456 byte dengan SHA-256 `dfed5061791ed2e7e521a0220616640b1e882024d59a0cad7256816323e283d3`; `apksigner` memverifikasi signature APK. Langkah `Verify offline manifest` lulus dan tidak menemukan `android.permission.INTERNET`.
+- Commit dokumentasi setelah `3f3a54d` tidak mengubah kode aplikasi. Build APK tidak deterministik, jadi artifact dari run berikutnya dapat memiliki SHA-256 berbeda.
 - Tanda tangan rilis produksi: **NOT VERIFIED** — run CI memakai keystore sementara (`CN=Penca CI, OU=Mobile, O=Penca, L=Jakarta, C=ID`) karena repository secrets keystore belum diisi. APK itu dapat dipasang untuk pengujian, tetapi tidak dapat menimpa instalasi produksi dan tidak boleh diunggah ke Play Store.
 - Pemasangan dan pengujian pada perangkat Android fisik: **NOT VERIFIED** — belum ada akses perangkat.
 - SQLite native (`@capacitor-community/sqlite`): **NOT VERIFIED di perangkat** — plugin terdaftar di APK, tetapi pengujian otomatis dan verifikasi runtime masih memakai sql.js.
