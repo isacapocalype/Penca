@@ -106,6 +106,31 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Verify offline manifest
+        run: |
+          apk="$(find android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+
+          if [ -z "$apk" ]; then
+            echo "::error::No APK was produced."
+            exit 1
+          fi
+
+          sdk_root="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          aapt2_bin="${sdk_root}/build-tools/36.0.0/aapt2"
+
+          if [ ! -x "$aapt2_bin" ]; then
+            echo "::error::aapt2 was not found."
+            exit 1
+          fi
+
+          permissions="$("$aapt2_bin" dump permissions "$apk")"
+          echo "$permissions"
+
+          if grep -q 'android.permission.INTERNET' <<< "$permissions"; then
+            echo "::error::APK requests INTERNET. Penca must remain fully offline."
+            exit 1
+          fi
+
       - name: Verify APK artifact
         run: |
           apk="$(find android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"

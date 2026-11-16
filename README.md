@@ -109,7 +109,7 @@ Test berjalan dengan database sql.js terisolasi per test dan lapisan file in-mem
 - File backup memuat seluruh data keuangan. Simpan hanya di tempat pribadi dan jangan dibagikan sembarangan.
 - Semua nominal disimpan sebagai integer rupiah, persentase sebagai basis poin, dan ID sebagai UUIDv7.
 - Setiap perubahan data keuangan tercatat di audit log. Periode terkunci menolak perubahan.
-- Android `allowBackup` dimatikan dan aplikasi tidak meminta izin INTERNET.
+- Android `allowBackup` dimatikan dan aplikasi tidak meminta izin INTERNET. Workflow APK memeriksa manifest hasil merge dan menggagalkan build jika izin INTERNET muncul.
 
 ## Struktur Utama
 
@@ -135,13 +135,13 @@ android/                 proyek Capacitor Android
 
 Status per 16 November 2026:
 
-- `npm run test`: **VERIFIED (lokal)** — 8 file, 35 test lulus.
-- `npm run typecheck` dan `npm run build`: **VERIFIED (lokal)**.
-- Build APK Capacitor di GitHub Actions: **NOT VERIFIED** — workflow sudah ditulis, tetapi belum ada run Capacitor yang selesai saat README ini diperbarui.
+- `npm run test`: **VERIFIED (lokal + CI)** — 8 file, 35 test lulus; workflow Tests run `43812239999` sukses.
+- `npm run typecheck` dan `npm run build`: **VERIFIED (lokal + CI)**.
+- Build APK Capacitor di GitHub Actions: **VERIFIED (CI)** — workflow Android APK run `43812239997` sukses dalam 2m31s. Artifact `penca-android-apk-275de4a39c69333a1ac27c0df48cb761df7066c9` berisi `app-release.apk` berukuran 13.055.456 byte dengan SHA-256 `980d3b9a90d95a867a23099f16419e4a4ac608ba18773b29cbe59b229173203b`; `apksigner` memverifikasi signature APK.
+- Tanda tangan rilis produksi: **NOT VERIFIED** — run CI memakai keystore sementara (`CN=Penca CI, OU=Mobile, O=Penca, L=Jakarta, C=ID`) karena repository secrets keystore belum diisi. APK itu dapat dipasang untuk pengujian, tetapi tidak dapat menimpa instalasi produksi dan tidak boleh diunggah ke Play Store.
 - Pemasangan dan pengujian pada perangkat Android fisik: **NOT VERIFIED** — belum ada akses perangkat.
-- SQLite native (`@capacitor-community/sqlite`): **NOT VERIFIED di perangkat** — kode adapter ada, pengujian otomatis memakai sql.js.
+- SQLite native (`@capacitor-community/sqlite`): **NOT VERIFIED di perangkat** — plugin terdaftar di APK, tetapi pengujian otomatis dan verifikasi runtime masih memakai sql.js.
 - File picker, Filesystem native, dan share sheet: **NOT VERIFIED di perangkat**.
-- Tanda tangan rilis produksi: **NOT VERIFIED** — repository secrets keystore belum diisi.
 - Restore `.db` di dalam aplikasi: **NOT DIDUKUNG** — restore hanya menerima JSON Penca.
 - Import XLSX dari file marketplace nyata di perangkat: **NOT VERIFIED** — pembaca XLSX diuji dengan workbook yang dihasilkan aplikasi sendiri; CSV adalah jalur yang dijamin.
 

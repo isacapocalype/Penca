@@ -797,14 +797,15 @@ Status per 16 November 2026:
 
 | Area | Status | Bukti / catatan |
 |---|---|---|
-| Test otomatis | VERIFIED (lokal) | `npm run test` — 8 file, 35 test lulus |
-| Typecheck | VERIFIED (lokal) | `npm run typecheck` lulus |
-| Build web | VERIFIED (lokal) | `npm run build` menghasilkan `dist/` |
-| Build APK Capacitor | NOT VERIFIED | Workflow ada; belum ada run Capacitor yang selesai |
+| Test otomatis | VERIFIED (lokal + CI) | `npm run test` — 8 file, 35 test lulus; Actions run `43812239999` sukses |
+| Typecheck | VERIFIED (lokal + CI) | `npm run typecheck` lulus di lokal dan Actions |
+| Build web | VERIFIED (lokal + CI) | `npm run build` menghasilkan `dist/` di lokal dan Actions |
+| Build APK Capacitor | VERIFIED (CI) | Actions run `43812239997` sukses; artifact `penca-android-apk-275de4a39c69333a1ac27c0df48cb761df7066c9`, `app-release.apk` 13.055.456 byte, SHA-256 `980d3b9a90d95a867a23099f16419e4a4ac608ba18773b29cbe59b229173203b` |
+| Signature APK CI | VERIFIED (CI, kunci sementara) | `apksigner` memverifikasi `CN=Penca CI, OU=Mobile, O=Penca, L=Jakarta, C=ID` |
 | Instalasi di perangkat | NOT VERIFIED | Belum ada akses perangkat Android |
-| SQLite native | NOT VERIFIED di perangkat | Test otomatis memakai sql.js |
+| SQLite native | NOT VERIFIED di perangkat | Plugin terdaftar di APK; test otomatis memakai sql.js |
 | File picker / share | NOT VERIFIED di perangkat | Bergantung WebView dan plugin Capacitor |
-| Signing produksi | NOT VERIFIED | Secrets keystore belum diisi |
+| Signing produksi | NOT VERIFIED | Secrets keystore belum diisi; build CI memakai kunci sementara |
 | Restore `.db` | TIDAK DIDUKUNG | Restore aplikasi hanya menerima JSON Penca |
 
 Implementasi NativePHP sebelumnya diarsipkan pada tag `nativephp-final` (commit `4c2bfa9`). Dokumen ini tidak boleh dipakai untuk mengklaim pengujian perangkat yang belum dilakukan.
